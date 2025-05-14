@@ -4,6 +4,8 @@ const bodyParser = require('body-parser');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
 const path = require('path');
+const Stripe = require('stripe');
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const db = require('./db'); // conexão com MySQL
 
 const app = express();
@@ -146,6 +148,59 @@ app.post('/send-email', async (req, res) => {
     res.status(500).json({ success: false, mensagem: 'Erro ao enviar o e-mail.' });
   }
 });
+
+
+
+// ROTA DE PAGAMENTO //
+app.post('/criar-checkout', async (req, res) => {
+  const { userId, priceId } = req.body;
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'payment',
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1
+        }
+      ],
+      success_url: `http://localhost:3000/sucesso?userId=${userId}&priceId=${priceId}`,
+      cancel_url: `http://localhost:3000/cancelado`,
+    });
+
+    res.json({ id: session.id });
+  } catch (err) {
+    res.status(500).send('Erro ao criar sessão de pagamento');
+  }
+});
+
+
+
+// Sucesso //
+
+app.get('/sucesso', (req, res) => {
+  const { userId, priceId } = req.query;
+
+  // Relacionamento priceId ↔ moedas
+  const valoresMoedas = {
+    'prod_SJH14ckV271dqy': 10,
+    'prod_SJH1ZseBQ5ht12': 25,
+    'prod_SJH2CQyvw11aYB': 35,
+    'prod_SJH28aeQpZra91': 70,
+  };
+
+  const moedas = valoresMoedas[priceId] || 0;
+
+  const sql = 'UPDATE usuarios SET moedas = moedas + ? WHERE id = ?';
+  db.query(sql, [moedas, userId], (err) => {
+    if (err) return res.status(500).send('Erro ao adicionar moedas');
+    res.send('Pagamento concluído! Moedas adicionadas.');
+  });
+});
+
+
+
 
 // === INICIAR SERVIDOR === //
 app.listen(3000, () => {

@@ -21,6 +21,12 @@ function cadastrarUsuario() {
     const senha = document.getElementById('new-senha').value;
     const confirmarSenha = document.getElementById('confirmar-senha').value;
 
+       // Valida se os campos estão preenchidos
+    if (!nome || !email || !senha || !confirmarSenha) {
+        alert('Preencha todos os campos!');
+        return;
+    }
+
     // Valida se a senha e a confirmação da senha são iguais
     if (senha !== confirmarSenha) {
         alert('As senhas não coincidem.');
@@ -38,6 +44,7 @@ function cadastrarUsuario() {
     .then(data => {
         if (data.success) {
             alert('Usuário cadastrado com sucesso!');
+            window.location.href = '../home.html';
         } else {
             alert('Erro ao cadastrar o usuário.');
         }
@@ -64,7 +71,12 @@ function loginUsuario() {
     .then(res => res.json())
     .then(data => {
       if (data.success) {
-        localStorage.setItem('usuario', JSON.stringify(data.usuario));
+        localStorage.setItem('usuario', JSON.stringify({
+                id: data.usuario.id,
+                nome: data.usuario.nome,
+                email: data.usuario.email,
+                moedas: data.usuario.moedas
+              }));
         window.location.href = '../home.html';
       } else {
         alert(data.mensagem || 'Email ou senha incorretos!');
