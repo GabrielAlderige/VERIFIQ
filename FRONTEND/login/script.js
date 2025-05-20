@@ -3,6 +3,7 @@ let card = document.querySelector(".card");
 let loginbutton = document.querySelector(".loginbutton");
 let cadastrobutton = document.querySelector(".cadastrobutton");
 
+
 loginbutton.onclick = () => {
     card.classList.remove("cadastroActive");
     card.classList.add("loginActive");
@@ -53,7 +54,6 @@ function cadastrarUsuario() {
 }
 
 
-
 function loginUsuario() {
   const email = document.getElementById('email').value;
   const senha = document.getElementById('senha').value;
@@ -66,17 +66,13 @@ function loginUsuario() {
   fetch('http://localhost:3000/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', // ADICIONA COOKIE DE SESSÃO
     body: JSON.stringify({ email, senha })
   })
     .then(res => res.json())
     .then(data => {
       if (data.success) {
-        localStorage.setItem('usuario', JSON.stringify({
-                id: data.usuario.id,
-                nome: data.usuario.nome,
-                email: data.usuario.email,
-                moedas: data.usuario.moedas
-              }));
+        // NÃO usa localStorage se está com sessão no backend
         window.location.href = '../home.html';
       } else {
         alert(data.mensagem || 'Email ou senha incorretos!');
@@ -87,3 +83,4 @@ function loginUsuario() {
       alert('Erro ao fazer login.');
     });
 }
+

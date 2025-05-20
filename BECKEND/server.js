@@ -4,17 +4,41 @@ const bodyParser = require('body-parser');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
 const path = require('path');
+const session = require('express-session');
+require('dotenv').config();
 const Stripe = require('stripe');
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 const db = require('./db'); // conexão com MySQL
 
 const app = express();
-app.use(cors());
+app.use(cors({origin: 'http://127.0.0.1:5500', credentials: true, methods: ['GET', 'POST']}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // para acessar imagens salvas
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'uma_chave_secreta_qualquer',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24, // 1 dia
+    sameSite: 'lax',  // importante para cookies em requisições cross-origin
+    secure: false
+  }
+})); //1dia de sessao
 
-// === Configuração do Multer === //
+
+//check
+function checarAutenticacao(req, res, next) {
+  if (req.session.usuario) {
+    next();
+  } else {
+    res.status(401).json({ success: false, mensagem: 'Usuário não autenticado' });
+  }
+}
+
+
+
+// Configuração do Multer //
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, 'uploads/'); // pasta onde as imagens serão salvas
@@ -27,7 +51,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// === Rota nova: Upload de tênis com imagens === //
+// Upload de tênis com imagens //
 app.post('/upload-sneaker', upload.fields([
   { name: 'topo_sapato', maxCount: 1 },
   { name: 'sola', maxCount: 1 },
@@ -75,12 +99,12 @@ app.post('/upload-sneaker', upload.fields([
   }
 });
 
-// === ROTA ANTIGA - FORM HTML === //
+// FORM HTML //
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// === ROTA ANTIGA - CADASTRO === //
+// CADASTRO //
 app.post('/cadastro', async (req, res) => {
   const { nome, email, senha } = req.body;
 
@@ -94,7 +118,8 @@ app.post('/cadastro', async (req, res) => {
   }
 });
 
-// === ROTA ANTIGA - LOGIN === //
+
+//login//
 app.post('/login', async (req, res) => {
   const { email, senha } = req.body;
 
@@ -102,16 +127,16 @@ app.post('/login', async (req, res) => {
     const [rows] = await db.query('SELECT * FROM usuarios WHERE email = ? AND senha = ?', [email, senha]);
 
     if (rows.length > 0) {
-      res.json({
-        success: true,
-        mensagem: 'Login realizado com sucesso!',
-        usuario: {
-          id: rows[0].id,
-          nome: rows[0].nome,
-          email: rows[0].email,
-          moedas: rows[0].moedas
-        }
-      });
+      req.session.usuario = {
+        id: rows[0].id,
+        nome: rows[0].nome,
+        email: rows[0].email,
+        moedas: rows[0].moedas
+      };
+      
+      console.log('Sessão criada:', req.session.usuario); // ADICIONE ISSO para depurar
+
+      res.json({ success: true, mensagem: 'Login realizado com sucesso!', usuario: req.session.usuario });
     } else {
       res.status(401).json({ success: false, mensagem: 'Email ou senha incorretos' });
     }
@@ -121,7 +146,27 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// === ROTA ANTIGA - ENVIAR EMAIL === //
+
+//verifica se esta logado//
+app.get('/perfil', (req, res) => {
+  if (req.session.usuario) {
+    res.json({ logado: true, usuario: req.session.usuario });
+  } else {
+    res.status(401).json({ logado: false });
+  }
+});
+
+
+//logout//
+app.get('/logout', (req, res) => {
+  req.session.destroy(() => {
+    res.json({ success: true, mensagem: 'Logout realizado com sucesso' });
+  });
+});
+
+
+
+//  ENVIAR EMAIL //
 app.post('/send-email', async (req, res) => {
   const { name, email, message } = req.body;
 
