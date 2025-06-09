@@ -6,8 +6,8 @@ const multer = require('multer');
 const path = require('path');
 const session = require('express-session');
 require('dotenv').config();
-const Stripe = require('stripe');
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+/*const Stripe = require('stripe');
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);*/
 const db = require('./db'); // conexão com MySQL
 
 const app = express();
@@ -15,7 +15,7 @@ app.use(cors({origin: 'http://127.0.0.1:5500', credentials: true, methods: ['GET
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // para acessar imagens salvas
-app.use(session({
+/*app.use(session({
   secret: process.env.SESSION_SECRET || 'uma_chave_secreta_qualquer',
   resave: false,
   saveUninitialized: false,
@@ -24,17 +24,7 @@ app.use(session({
     sameSite: 'lax',  // importante para cookies em requisições cross-origin
     secure: false
   }
-})); //1dia de sessao
-
-
-//check
-function checarAutenticacao(req, res, next) {
-  if (req.session.usuario) {
-    next();
-  } else {
-    res.status(401).json({ success: false, mensagem: 'Usuário não autenticado' });
-  }
-}
+})); //1dia de sessao*/
 
 
 
@@ -127,16 +117,16 @@ app.post('/login', async (req, res) => {
     const [rows] = await db.query('SELECT * FROM usuarios WHERE email = ? AND senha = ?', [email, senha]);
 
     if (rows.length > 0) {
-      req.session.usuario = {
+      const usuario = {
         id: rows[0].id,
         nome: rows[0].nome,
         email: rows[0].email,
         moedas: rows[0].moedas
       };
       
-      console.log('Sessão criada:', req.session.usuario); // ADICIONE ISSO para depurar
+      console.log('Login realizado!', usuario); // ADICIONE ISSO para depurar
 
-      res.json({ success: true, mensagem: 'Login realizado com sucesso!', usuario: req.session.usuario });
+      res.json({ success: true, mensagem: 'Login realizado com sucesso!', usuario});
     } else {
       res.status(401).json({ success: false, mensagem: 'Email ou senha incorretos' });
     }
@@ -146,23 +136,6 @@ app.post('/login', async (req, res) => {
   }
 });
 
-
-//verifica se esta logado//
-app.get('/perfil', (req, res) => {
-  if (req.session.usuario) {
-    res.json({ logado: true, usuario: req.session.usuario });
-  } else {
-    res.status(401).json({ logado: false });
-  }
-});
-
-
-//logout//
-app.get('/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.json({ success: true, mensagem: 'Logout realizado com sucesso' });
-  });
-});
 
 
 
@@ -195,7 +168,7 @@ app.post('/send-email', async (req, res) => {
 });
 
 
-
+/*
 // ROTA DE PAGAMENTO //
 app.post('/criar-checkout', async (req, res) => {
   const { userId, priceId } = req.body;
@@ -245,7 +218,7 @@ app.get('/sucesso', (req, res) => {
 });
 
 
-
+*/
 
 // === INICIAR SERVIDOR === //
 app.listen(3000, () => {

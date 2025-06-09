@@ -66,13 +66,15 @@ function loginUsuario() {
   fetch('http://localhost:3000/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    credentials: 'include', // ADICIONA COOKIE DE SESSÃO
     body: JSON.stringify({ email, senha })
   })
     .then(res => res.json())
     .then(data => {
       if (data.success) {
-        // NÃO usa localStorage se está com sessão no backend
+        // Salva o usuário no localStorage
+        localStorage.setItem('usuario', JSON.stringify(data.usuario));
+
+        // Redireciona para home
         window.location.href = '../home.html';
       } else {
         alert(data.mensagem || 'Email ou senha incorretos!');
